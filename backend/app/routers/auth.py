@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
     description="Authenticate with username and password, setting an HTTP-only session cookie.",
 )
 def login(login_data: LoginRequest, response: Response):
-    user = authenticate_user(login_data.username, login_data.password)
+    user = authenticate_user(login_data.identifier, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -24,14 +24,14 @@ def login(login_data: LoginRequest, response: Response):
     # Create signed session token
     token = create_session_token({"username": user["username"], "user_id": user["id"]})
 
-    # Set HTTP-only cookie
+    # Set HTTP-only cookie with environment-aware SameSite and Secure flags
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=token,
         max_age=settings.SESSION_EXPIRE_HOURS * 3600,
         httponly=True,
-        samesite="lax",
-        secure=False,  # Can be configured True in production with HTTPS
+        samesite=settings.cookie_samesite,
+        secure=settings.cookie_secure,
         path="/",
     )
 
@@ -49,7 +49,8 @@ def logout(response: Response):
         key=settings.SESSION_COOKIE_NAME,
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite=settings.cookie_samesite,
+        secure=settings.cookie_secure,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -63,3 +64,4 @@ def logout(response: Response):
 )
 def get_me(current_user: dict = Depends(get_current_user)):
     return current_user
+

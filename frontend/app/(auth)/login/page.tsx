@@ -45,6 +45,8 @@ export default function LoginPage() {
     } catch (err: any) {
       if (err instanceof ApiClientError) {
         setErrorMessage(err.message);
+      } else if (err?.message) {
+        setErrorMessage(err.message);
       } else {
         setErrorMessage("Authentication failed. Please check your credentials.");
       }

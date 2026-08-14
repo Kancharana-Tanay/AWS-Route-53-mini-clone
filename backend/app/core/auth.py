@@ -1,28 +1,36 @@
 from typing import Optional, Dict, Any
-from fastapi import Request, HTTPException, status, Depends
+from fastapi import Request, HTTPException, status
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from app.core.config import settings
 
 # Session serializer
 serializer = URLSafeTimedSerializer(settings.SECRET_KEY)
 
-# Mocked user record
-MOCK_USER = {
-    "id": 1,
-    "username": settings.MOCK_USER_USERNAME,
-    "email": settings.MOCK_USER_EMAIL,
-    "full_name": "Route 53 Administrator",
-    "is_active": True,
-}
+
+def get_mock_user() -> Dict[str, Any]:
+    """Construct mock user record from current settings."""
+    return {
+        "id": 1,
+        "username": settings.MOCK_USER_USERNAME,
+        "email": settings.MOCK_USER_EMAIL,
+        "full_name": "Route 53 Administrator",
+        "is_active": True,
+    }
 
 
-def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
-    """Verify mock user credentials."""
-    if (
-        username == settings.MOCK_USER_USERNAME
-        and password == settings.MOCK_USER_PASSWORD
-    ):
-        return MOCK_USER
+def authenticate_user(identifier: Optional[str], password: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Verify mock user credentials against configured username or email."""
+    if not identifier or not password:
+        return None
+
+    cleaned_id = identifier.strip().lower()
+    valid_ids = {
+        settings.MOCK_USER_USERNAME.strip().lower(),
+        settings.MOCK_USER_EMAIL.strip().lower(),
+    }
+
+    if cleaned_id in valid_ids and password == settings.MOCK_USER_PASSWORD:
+        return get_mock_user()
     return None
 
 
@@ -51,10 +59,11 @@ def get_current_user(request: Request) -> Dict[str, Any]:
         )
 
     payload = verify_session_token(token)
-    if not payload or payload.get("username") != settings.MOCK_USER_USERNAME:
+    if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session.",
         )
 
-    return MOCK_USER
+    return get_mock_user()
+

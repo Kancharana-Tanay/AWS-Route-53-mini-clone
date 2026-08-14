@@ -1,10 +1,21 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class LoginRequest(BaseModel):
-    username: str
+    username: Optional[str] = None
+    email: Optional[str] = None
     password: str
+
+    @model_validator(mode="after")
+    def validate_identifier(self):
+        if not self.username and not self.email:
+            raise ValueError("Username or email is required.")
+        return self
+
+    @property
+    def identifier(self) -> str:
+        return (self.username or self.email or "").strip()
 
 
 class UserResponse(BaseModel):
@@ -19,3 +30,4 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
